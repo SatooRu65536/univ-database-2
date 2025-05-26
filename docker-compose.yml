@@ -25,7 +25,8 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     container_name: db
@@ -38,3 +39,9 @@ services:
       TZ: Asia/Tokyo
     ports:
       - 53306:3306
+    volumes:
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
