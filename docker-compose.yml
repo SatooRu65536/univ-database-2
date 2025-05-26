@@ -1,0 +1,14 @@
+services:
+  frontend:
+    container_name: frontend
+    build:
+      context: frontend
+    tty: true
+    volumes:
+      - ./frontend:/frontend
+    ports:
+      - 3000:3000
+    environment:
+      - WATCHPACK_POLLING=true
+    extra_hosts:
+      - host.docker.internal:host-gateway
