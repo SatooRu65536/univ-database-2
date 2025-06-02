@@ -35,7 +35,7 @@ axios_instance.interceptors.response.use(
     }
     return axios_instance
       .post("/api/inventory/retry", { refresh: "" })
-      .then(() => {
+      .then((response) => {
         return axios_instance(originalConfig);
       })
       .catch(function (error) {

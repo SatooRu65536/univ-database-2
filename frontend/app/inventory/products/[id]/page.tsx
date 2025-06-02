@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { useState, useEffect } from 'react';
+import { useParams } from "next/navigation";
 
 type ProductData = {
     id: number;
@@ -42,10 +43,8 @@ type InventoryData = {
     inventory: number;
 };
 
-export default function PagePage({ params }: {
-    params: { id: number },
-}) {
-
+export default function PagePage() {
+    const params = useParams<{ id: string }>();
     const {
         register,
         handleSubmit,
@@ -71,11 +70,11 @@ export default function PagePage({ params }: {
     };
 
     useEffect(() => {
-        axios.get(`/api/inventory/products/${params.id}`)
+        axios.get(`/api/inventory/products/${params?.id}`)
             .then((response) => {
                 setProduct(response.data);
         });
-        axios.get(`/api/inventory/inventories/${params.id}`)
+        axios.get(`/api/inventory/inventories/${params?.id}`)
             .then((response) => {
                 const inventoryData: InventoryData[] = [];
                 let key: number = 1;
@@ -97,11 +96,11 @@ export default function PagePage({ params }: {
                 });
                 setData(inventoryData);
         });
-    }, [open])
+    }, [open, params?.id])
 
     const onSubmit = (event: any): void => {
         const data: FormData = {
-            id: Number(params.id),
+            id: Number(params?.id),
             quantity: Number(event.quantity),
         };
 

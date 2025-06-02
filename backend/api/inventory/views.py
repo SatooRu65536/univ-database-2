@@ -1,16 +1,20 @@
 from api.inventory.exception import BusinessException
+from api.inventory.models import Sales, SalesFile, Status
+from api.inventory.serializers import FileSerializer
 from django.conf import settings
 from django.db.models import F, Value, Sum
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncMonth
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Product, Purchase, Sales
-from .serializers import InventorySerializer, ProductSerializer, PurchaseSerializer, SaleSerializer
+from .serializers import InventorySerializer, ProductSerializer, PurchaseSerializer, SaleSerializer, SalesSerializer
 from rest_framework import status
+from rest_framework.generics import ListAPIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+import pandas
 from api.inventory.authentication import RefreshJWTAuthentication
 
 class ProductView(APIView):
@@ -165,3 +169,44 @@ class LogoutView(APIView):
         response.delete_cookie('access')
         response.delete_cookie('refresh')
         return response
+
+class SalesAsyncView(APIView):
+    def post(self, request, format=None):
+        serializer = FileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        filename = serializer.validated_data['file'].name
+
+        with open(filename, 'wb') as f:
+            f.write(serializer.validated_data['file'].read())
+
+        sales_file = SalesFile(
+            file_name=filename, status=Status.ASYNC_UNPROCESSED)
+        sales_file.save()
+
+        return Response(status=201)
+
+class SalesSyncView(APIView):
+    def post(self, request, format=None):
+        serializer = FileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        filename = serializer.validated_data['file'].name
+
+        with open(filename, 'wb') as f:
+            f.write(serializer.validated_data['file'].read())
+
+        sales_file = SalesFile(file_name=filename, status=Status.SYNC)
+        sales_file.save()
+
+        df = pandas.read_csv(filename)
+        for _, row in df.iterrows():
+            sales = Sales(
+                product_id=row['product'], sales_date=row['date'],
+                quantity=row['quantity'], import_file=sales_file)
+            sales.save()
+    
+        return Response(status=201)
+
+class SalesList(ListAPIView):
+    queryset = Sales.objects.annotate(monthly_date=TruncMonth('sales_date')).values('monthly_date').annotate(monthly_price=Sum('quantity')).order_by('monthly_date')
+    serializer_class = SalesSerializer
