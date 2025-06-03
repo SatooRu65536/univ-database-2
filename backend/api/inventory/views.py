@@ -16,6 +16,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 import pandas
 from api.inventory.authentication import RefreshJWTAuthentication
+from rest_framework_simplejwt import exceptions as jwt_exp
 
 class ProductView(APIView):
 
@@ -130,16 +131,19 @@ class LoginView(APIView):
     permission_classes = []
 
     def post(self, request):
-        serializer = TokenObtainPairSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        access = serializer.validated_data.get("access", None)
-        refresh = serializer.validated_data.get("refresh", None)
-        if access:
-            response = Response(status=status.HTTP_200_OK)
-            max_age = settings.COOKIE_TIME
-            response.set_cookie('access', access, httponly=True, max_age=max_age)
-            response.set_cookie('refresh', refresh, httponly=True, max_age=max_age)
-            return response
+        try:
+            serializer = TokenObtainPairSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            access = serializer.validated_data.get("access", None)
+            refresh = serializer.validated_data.get("refresh", None)
+            if access:
+                response = Response(status=status.HTTP_200_OK)
+                max_age = settings.COOKIE_TIME
+                response.set_cookie('access', access, httponly=True, max_age=max_age)
+                response.set_cookie('refresh', refresh, httponly=True, max_age=max_age)
+                return response
+        except Exception:
+            pass
         return Response({'errMsg': 'ユーザーの認証に失敗しました'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class RetryView(APIView):
